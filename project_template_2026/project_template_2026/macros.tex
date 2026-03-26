@@ -1,0 +1,178 @@
+% Math macros to be imported into main.tex
+
+%ELLIOT
+\def\N{\mathbb{N}}
+\def\R{\mathbb{R}}
+\def\Filt{\mathscr{F}}
+\renewcommand\ss{{\boldsymbol s}}
+\renewcommand\gg{{\boldsymbol g}}
+
+%KIWON
+\def\aa{{\boldsymbol a}}
+\def\bb{{\boldsymbol b}}
+\def\hh{{\boldsymbol h}}
+
+%COURTNEY
+\def\xx{{\boldsymbol x}}
+\def\qq{{\boldsymbol q}}
+\def\dd{{\boldsymbol d}}
+\def\XX{{\boldsymbol X}}
+\def\YY{{\boldsymbol Y}}
+\def\ZZ{{\boldsymbol Z}}
+\def\aa{{\boldsymbol a}}
+\def\bb{{\boldsymbol b}}
+\def\rr{{\boldsymbol r}}
+\def\ee{{\boldsymbol e}}
+\def\cc{{\boldsymbol c}}
+\def\qq{{\boldsymbol q}}
+\def\vv{{\boldsymbol v}}
+
+\def\WW{{\boldsymbol W}}
+\def\JJ{{\boldsymbol J}}
+\def\KK{{\boldsymbol K}}
+\def\II{{\text{\textbf{I}}}}
+\def\yy{{\boldsymbol y}}
+\def\vv{{\boldsymbol v}}
+\def\uu{{\boldsymbol u}}
+\def\ww{{\boldsymbol w}}
+\def\zz{{\boldsymbol z}}
+\def\SS{{\boldsymbol S}}
+\def\BB{{\boldsymbol B}}
+\def\AA{{\boldsymbol A}}
+\def\CC{{\boldsymbol C}}
+\def\FF{{\boldsymbol F}}
+\def\GG{{\boldsymbol G}}
+\def\MM{{\boldsymbol M}}
+\def\DD{{\boldsymbol D}}
+\def\OO{{\boldsymbol O}}
+\def\PP{{\boldsymbol P}}
+\def\TT{{\boldsymbol T}}
+\def\bphi{{\boldsymbol \phi}}
+\def\QQ{{\boldsymbol Q}}
+\def\UU{{\boldsymbol U}}
+\def\VV{{\boldsymbol V}}
+\def\HH{{\boldsymbol H}}
+\def\balpha{{\boldsymbol \alpha}}
+\def\bpsi{{\boldsymbol \psi}}
+\def\LLambda{{\boldsymbol \Lambda}}
+\def\xxi{  {\boldsymbol \xi} } 
+\def\SSigma{{\boldsymbol \Sigma}}
+
+\def\YY{ {\boldsymbol Y} }
+
+\def\nnu{{\boldsymbol \nu}}
+\def\eeps{{\boldsymbol \varepsilon}}
+\def\eeta{{\boldsymbol \eta}}
+\def\DDelta{{\boldsymbol \Delta}}
+\def\llambda{{\boldsymbol \lambda}}
+\def\bbeta{{\boldsymbol \beta}}
+
+\def\g{{g}}
+
+\def\dif{\mathop{}\!\mathrm{d}}
+\def\Proba{\mathbb{P}}
+\def\MP{\mu_{\mathrm{MP}}}
+\def\RR{{\widehat{\bm {R}}}}
+\def\EE{{\mathbb E}\,}
+%\newcommand{\Econd}{\mathbf{E}}
+\renewcommand{\vec}{\mathbf{vec}}
+%\DeclareMathOperator{\prox}{\mathbf{prox}}
+
+%\DeclareMathOperator*{\argmin}{{arg\,min}}
+
+%\DeclareMathOperator{\tr}{tr}
+\def\defas{\stackrel{\text{def}}{=}}
+%\DeclareMathOperator*{\dom}{dom}
+%\DeclareMathOperator*{\supp}{supp}
+%\DeclareMathOperator*{\Fix}{Fix}
+%\DeclareMathOperator*{\Var}{Var}
+%\DeclareMathOperator*{\argmax}{{arg\,max}}
+%\DeclareMathOperator*{\argmin}{{arg\,min}}
+%\DeclareMathOperator*{\minimize}{minimize}
+%\DeclareMathOperator*{\diag}{\mathbf{diag}}
+\DeclareMathOperator*{\ospan}{span}
+\def\concentration{\! \! \underset{d \rightarrow \infty}{\mathcal{E}} \!  [\|\nabla f(\xx_{k})\|^2]\,}
+
+
+\newcommand{\D}{\tilde{D}}
+%\newcommand{\B}{\tilde{B}}
+\newcommand{\M}{\tilde{M}}
+%\newcommand{\K}{\tilde{K}}
+%\newcommand{\Z}{\mathcal{Z}}
+\newcommand{\W}{\mathcal{W}}
+\DeclareMathOperator{\E}{\mathbb{E}}
+
+\newcommand{\Id}{\text{\textbf{I}}}
+\DeclareMathOperator{\Exp}{\mathbb{E}}
+
+%\newcommand{\blue}{\color{blue}}
+
+
+
+%BEN
+\DeclareMathOperator{\ntr}{\bar{tr}}
+\newcommand{\gcal}{R}
+\newcommand{\gcaltil}{\tilde{R}}
+\newcommand{\gcalm}[1]{R^{(#1)}}
+\newcommand{\gcaltilm}[1]{\tilde{R}^{(#1)}}
+\newcommand{\deq}{\mathrel{\mathop:}=} 
+
+
+% shortcut for inline equations and alignments
+%\newcommand{\eq}[1]{\begin{equation}#1\end{equation}}
+%\newcommand{\eqs}[1]{\begin{equation*}#1\end{equation*}}
+\newcommand{\al}[1]{\begin{align}#1\end{align}}
+\newcommand{\als}[1]{\begin{align*}#1\end{align*}}
+\newcommand{\ca}[1]{\begin{cases}#1\end{cases}}
+
+% ( round parentheses )
+\newcommand{\pb}[1]{\bigl({#1}\bigr)}
+\newcommand{\pB}[1]{\Bigl({#1}\Bigr)}
+\newcommand{\pbb}[1]{\biggl({#1}\biggr)}
+\newcommand{\pBB}[1]{\Biggl({#1}\Biggr)}
+\newcommand{\pa}[1]{\left({#1}\right)}
+
+% [ square brackets ]
+\newcommand{\q}[1]{[{#1}]}
+\newcommand{\qb}[1]{\bigl[{#1}\bigr]}
+\newcommand{\qB}[1]{\Bigl[{#1}\Bigr]}
+\newcommand{\qbb}[1]{\biggl[{#1}\biggr]}
+\newcommand{\qBB}[1]{\Biggl[{#1}\Biggr]}
+\newcommand{\qa}[1]{\left[{#1}\right]}
+
+% { curly braces }
+\newcommand{\h}[1]{\{{#1}\}}
+\newcommand{\hb}[1]{\bigl\{{#1}\bigr\}}
+\newcommand{\hB}[1]{\Bigl\{{#1}\Bigr\}}
+\newcommand{\hbb}[1]{\biggl\{{#1}\biggr\}}
+\newcommand{\hBB}[1]{\Biggl\{{#1}\Biggr\}}
+\newcommand{\ha}[1]{\left\{{#1}\right\}}
+
+% | absolute value |
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+\newcommand{\absb}[1]{\bigl\lvert #1 \bigr\rvert}
+\newcommand{\absB}[1]{\Bigl\lvert #1 \Bigr\rvert}
+\newcommand{\absbb}[1]{\biggl\lvert #1 \biggr\rvert}
+\newcommand{\absBB}[1]{\Biggl\lvert #1 \Biggr\rvert}
+\newcommand{\absa}[1]{\left\lvert #1 \right\rvert}
+
+% || norm ||
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+\newcommand{\normb}[1]{\bigl\lVert #1 \bigr\rVert}
+\newcommand{\normB}[1]{\Bigl\lVert #1 \Bigr\rVert}
+\newcommand{\normbb}[1]{\biggl\lVert #1 \biggr\rVert}
+\newcommand{\normBB}[1]{\Biggl\lVert #1 \Biggr\rVert}
+\newcommand{\norma}[1]{\left\lVert #1 \right\rVert}
+
+\newcommand{\vertiii}[1]{{\left\vert\kern-0.25ex\left\vert\kern-0.25ex\left\vert #1 
+    \right\vert\kern-0.25ex\right\vert\kern-0.25ex\right\vert}}
+    
+\newcommand{\gf}{\bm{\mathscr{X}}^{\text{gf}}}
+
+\newcommand{\sgf}{\bm{\mathscr{X}}^{\text{s-gf}}}
+
+\newcommand{\gd}{\bm{\xx}^{\text{gd}}}
+
+\newcommand{\sgd}{\bm{\xx}^{\text{sgd}}}
+
+\newcommand{\mgd}{\bm{x}^{\text{m-gd}}}
