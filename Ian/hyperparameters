@@ -1,0 +1,7 @@
+"""Heuristic Hyperparameter Selection"""
+
+1> Gamma 
+Variation -  Higher Gamma => Better Denoising hence smoother pictures => not very good deblurring => No sharp features
+          -  Lower Gamma => Better Deblurring hence sharper pictures => not very good denoising => Sharp image with good feature preservation,
+             but has residual noise
+Heuristic Selection -  Try values between (0.001 - 1)
