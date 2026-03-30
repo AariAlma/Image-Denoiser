@@ -105,3 +105,7 @@ def main():
     print(f"rho                 : {config['rho']}")
     print(f"Final objective     : {history['objective'][-1]:.6e}")
     print(f"Iterations recorded : {len(history['objective'])}")
+
+
+if __name__ == "__main__":
+    main()
