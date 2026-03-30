@@ -43,17 +43,17 @@ fprintf('Running Chambolle-Pock with L1 Data Fidelity (Salt & Pepper resistant).
 % We initialize with the blurred image (b) to give the algorithm a head start
 x_reconstructed = optsolver('l1', 'chambollepock', b, kernel, b, i);
 
-##% 5. Display the Results
-##figure('Name', 'Chambolle-Pock Deblurring Results', 'Position', [100, 100, 1200, 400]);
-##
-##subplot(1, 3, 1);
-##imshow(I_true, []);
-##title('Original True Image');
-##
-##subplot(1, 3, 2);
-##imshow(b, []);
-##title(sprintf('Blurred & Noisy\n(Gaussian + Salt&Pepper)'));
-##
-##subplot(1, 3, 3);
-##imshow(x_reconstructed, []);
-##title(sprintf('Reconstructed Image\n(Chambolle-Pock L1)'));
+% 5. Display the Results
+figure('Name', 'Chambolle-Pock Deblurring Results', 'Position', [100, 100, 1200, 400]);
+
+subplot(1, 3, 1);
+imshow(I_true, []);
+title('Original True Image');
+
+subplot(1, 3, 2);
+imshow(b, []);
+title(sprintf('Blurred & Noisy\n(Gaussian + Salt&Pepper)'));
+
+subplot(1, 3, 3);
+imshow(x_reconstructed, []);
+title(sprintf('Reconstructed Image\n(Chambolle-Pock L1)'));
