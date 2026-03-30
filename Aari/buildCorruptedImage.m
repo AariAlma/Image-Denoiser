@@ -57,12 +57,15 @@ switch lower(opt.BlurKind)
         error("buildCorruptedImage: unknown BlurKind '%s'.", opt.BlurKind);
 end
 
-% --- Apply blur via circular convolution (FFT) -----------------------------
-% Uses shared utilities from Matlab_code/ (added to path automatically)
-matlabCodeDir = fullfile(fileparts(mfilename('fullpath')), '..', 'Matlab_code');
-addpath(matlabCodeDir);
-eigK   = eigValsForPeriodicConvOp(psf, nRows, nCols);
-blurred = real(applyPeriodicConv2D(xTrue, eigK));
+% --- Apply blur via circular convolution (FFT, no toolbox needed) ----------
+% Zero-pad PSF to image size and shift so DC is at (1,1)
+[kH, kW] = size(psf);
+padded = zeros(nRows, nCols);
+padded(1:kH, 1:kW) = psf;
+padded  = circshift(padded, -floor(kH/2), 1);
+padded  = circshift(padded, -floor(kW/2), 2);
+eigK    = fft2(padded);                          % OTF
+blurred = real(ifft2(eigK .* fft2(xTrue)));
 
 % --- Add noise -------------------------------------------------------------
 b = addNoise(blurred, opt.NoiseType, opt.NoiseLevel, opt.Seed);
