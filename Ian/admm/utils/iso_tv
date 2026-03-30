@@ -1,0 +1,10 @@
+def tv_isotropic(x):
+    """
+    isotropic total variation:
+
+        TV(x) = sum_ij sqrt(gx_ij^2 + gy_ij^2)
+    I have only used it for printing purposes
+    """
+    gx = np.roll(x, -1, axis=1) - x
+    gy = np.roll(x, -1, axis=0) - x
+    return np.sum(np.sqrt(gx**2 + gy**2))
