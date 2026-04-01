@@ -1,4 +1,4 @@
 % l2ShiftProx
 function y_prox = l2shiftprox(y, b, t)
-    y_prox = b + l2Prox(y - b, t);
+    y_prox = b + l2prox(y - b, t);
 end
