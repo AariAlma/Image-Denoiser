@@ -5,7 +5,7 @@ fprintf('Initializing Image Deblurring Pipeline...\n');
 
 % 1. Load and prepare the true image
 % Using MATLAB's built-in cameraman image
-I_true = im2double(imread('cameraman.jpg'));
+I_true = im2double(imread('manWithHat.tiff'));
 
 % Normalize physical pixel constraints to [0, 1] as requested
 mn = min(I_true(:));
