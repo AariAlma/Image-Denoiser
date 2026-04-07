@@ -7,3 +7,6 @@ dependencies:
   - numpy
   - pillow
   - matplotlib
+  - pip
+  - pip:
+    - cupy-cuda12x
