@@ -234,7 +234,20 @@ def primal_dual_dr_solve(
         if verbose and (k == 1 or k % print_every == 0):
             print(f"  iter {k:4d}  obj={history_obj[-1]:.6e}  rel_change={rel_change:.6e}")
 
-        if rel_change < tol and k > 1:
+        # Iterate-change criterion (works well for L2)
+        iterate_converged = rel_change < tol and k > 1
+
+        # Objective-plateau criterion (robust for L1 non-smooth oscillations):
+        # DR iterates can persistently oscillate above tol for non-smooth objectives
+        # even when near the solution; check if the objective has stopped improving.
+        _OBJ_WINDOW = 20
+        obj_plateau = False
+        if len(history_obj) >= _OBJ_WINDOW:
+            obj_win = history_obj[-_OBJ_WINDOW:]
+            obj_range = max(obj_win) - min(obj_win)
+            obj_plateau = obj_range / (abs(history_obj[-1]) + 1e-12) < tol
+
+        if iterate_converged or obj_plateau:
             converged = True
             if verbose:
                 print(f"  Converged at iteration {k}  (rel_change={rel_change:.2e})")

@@ -14,10 +14,19 @@ Outputs (written to project/Aari/):
 """
 
 import csv
+import os
 import time
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+def _next_path(stem, ext):
+    """Return stem_1.ext, stem_2.ext, … — first index not already on disk."""
+    i = 1
+    while os.path.exists(f"{stem}_{i}.{ext}"):
+        i += 1
+    return f"{stem}_{i}.{ext}"
 
 from pipeline import build_corrupted_image
 from solver import primal_dual_dr_solve
@@ -35,7 +44,7 @@ SEED          = 0
 SCALE         = 1.0
 
 # ---- Sweep settings -------------------------------------------------------
-MAXITER  = 300      # reduced from 500 to keep sweep time reasonable
+MAXITER  = {"l1": 500, "l2": 300}   # L1 needs more iters (slower O(1/k) convergence)
 TOL      = 1e-4
 TOP_N    = 5
 PROBLEMS = ["l2", "l1"]
@@ -80,7 +89,7 @@ def run_sweep(problem, x_true, b, psf):
             gamma=gamma,
             t=t,
             rho=rho,
-            maxiter=MAXITER,
+            maxiter=MAXITER[problem],
             tol=TOL,
             verbose=False,
         )
@@ -166,7 +175,7 @@ def plot_heatmaps(rows, problem):
         fontsize=13, fontweight="bold",
     )
     plt.tight_layout()
-    fname = f"PDDR_Sweep_Heatmap-{problem}.png"
+    fname = _next_path(f"PDDR_Sweep_Heatmap-{problem}", "png")
     plt.savefig(fname, dpi=120, bbox_inches="tight")
     plt.close(fig)
     print(f"  Heatmap saved → {fname}")
@@ -192,7 +201,7 @@ def main():
     # ---- Run sweep for each problem variant --------------------------------
     for problem in PROBLEMS:
         rows = run_sweep(problem, x_true, b, psf)
-        save_csv(rows, f"PDDR_Sweep_Results-{problem}.csv")
+        save_csv(rows, _next_path(f"PDDR_Sweep_Results-{problem}", "csv"))
         print_top_n(rows, problem)
         plot_heatmaps(rows, problem)
 
