@@ -1,5 +1,5 @@
-function [x_sol, info] = primalDualDR(b, psf, config)
-% primalDualDR  Primal-Dual Douglas-Rachford solver for image deblurring.
+function [x_sol, info] = PDDR(b, psf, config)
+% PDDR  Primal-Dual Douglas-Rachford solver for image deblurring.
 %
 % Solves one of two problems depending on config.problem:
 %
@@ -31,7 +31,7 @@ function [x_sol, info] = primalDualDR(b, psf, config)
 %   config.maxiter = 500;
 %   config.tol     = 1e-4;
 %   config.verbose = true;
-%   [x_sol, info] = primalDualDR(b, psf, config);
+%   [x_sol, info] = PDDR(b, psf, config);
 %
 % NOTE: The prox_operators/ folder must be on the MATLAB path.
 %   addpath('../prox_operators')
@@ -71,7 +71,7 @@ k_hat = psfToOtf(psf, H, W);   % (H x W) complex array
 %   A^T A = K^T K + D_x^T D_x + D_y^T D_y
 %         = K^T K + discrete Laplacian
 % Both are diagonalized by the DFT, so the inverse is just element-wise division.
-%   Eigenvalues of K^T K  = |k_hat|^2
+%   Eigenvalues of K^T K    = |k_hat|^2
 %   Eigenvalues of Laplacian = laplacianSymbol(H, W)
 denom = 1.0 + t^2 * (abs(k_hat).^2 + laplacianSymbol(H, W));   % (H x W) real
 
@@ -195,6 +195,11 @@ for k = 1:maxiter
     % The actual primal iterate is always proj_[0,1](z), not z itself
     x_cur = boxProx(z);     % (H x W) current image estimate
 
+    % Optional live display callback (used by the app for per-iteration display)
+    if isfield(config, 'display_callback')
+        config.display_callback(x_cur, k);
+    end
+
     % Relative change: how much did the iterate move this step?
     % norm(v(:)) flattens v to a column vector before taking the 2-norm
     rel_change = norm(x_cur(:) - x_prev(:)) / (norm(x_prev(:)) + 1e-12);
@@ -267,7 +272,7 @@ info.iterations = k;
 info.converged  = converged;
 info.time_sec   = elapsed;
 
-end  % <<<< end of primalDualDR (main function)
+end  % <<<< end of PDDR (main function)
 
 
 % =========================================================================
@@ -360,3 +365,5 @@ else
     val = default;      % field missing: use the default
 end
 end
+
+

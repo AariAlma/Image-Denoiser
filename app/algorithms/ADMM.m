@@ -155,6 +155,11 @@ for k = 1:maxiter
     u_arg = rho * x + (1.0 - rho) * u + w / t;     % over-relaxed argument
     u     = boxProx(u_arg);                          % project onto [0,1]
 
+    % Optional live display callback (used by the app for per-iteration display)
+    if isfield(config, 'display_callback')
+        config.display_callback(u, k);
+    end
+
     % =================================================================
     % Y-UPDATE
     %   y1/y2/y3 are the auxiliary copies of Ax for data fidelity + TV.
@@ -353,3 +358,5 @@ else
     out = b;
 end
 end
+
+

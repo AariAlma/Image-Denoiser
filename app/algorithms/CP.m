@@ -161,6 +161,11 @@ for k = 1:maxiter
     % Gradient descent + projection
     x = boxProx(x - t * Aty);  % project onto [0,1] after the gradient step
 
+    % Optional live display callback (used by the app for per-iteration display)
+    if isfield(config, 'display_callback')
+        config.display_callback(x, k);
+    end
+
     % =================================================================
     % EXTRAPOLATION (z-step):
     %   z = 2 * x_new - x_old

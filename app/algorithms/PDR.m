@@ -114,6 +114,11 @@ for k = 1:maxiter
     % =====================================================================
     x_k = boxProx(z1);      % project each pixel of z1 onto [0,1]
 
+    % Optional live display callback (used by the app for per-iteration display)
+    if isfield(config, 'display_callback')
+        config.display_callback(x_k, k);
+    end
+
     % =====================================================================
     % STEP 2: y_k = prox_{t*g}(z2)  -- applied channel by channel
     %
@@ -289,3 +294,5 @@ else
     val = default;
 end
 end
+
+
