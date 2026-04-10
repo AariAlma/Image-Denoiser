@@ -10,8 +10,6 @@ function DeblurApp()
 %   DeblurApp()
 
 % ---- Add all app sub-folders to MATLAB path --------------------------------
-% Use which() as a fallback — more robust than mfilename when the function
-% is called from a different working directory or via a path entry.
 appDir = fileparts(mfilename('fullpath'));
 if isempty(appDir)
     appDir = fileparts(which('DeblurApp'));
@@ -33,6 +31,7 @@ app.psf           = [];      % kH×kW double, current blur kernel ([] = unknown)
 app.info          = [];      % struct returned by last solver call
 app.imagePath     = '';      % full path to last loaded file
 app.solverRunning = false;   % true while solver is executing (prevents re-entry)
+app.appDir        = appDir;  % stored so callbacks can re-add paths if needed
 fig.UserData = app;
 
 % ---- Build tabs ------------------------------------------------------------
@@ -461,7 +460,7 @@ try
     app.img_blurred   = [];   % clear stale corrupted image
     app.img_recon     = [];   % clear stale reconstruction
 
-    imshow(img, [], 'Parent', app.ax_clean);
+    grayshow(app.ax_clean, img);
     title(app.ax_clean, 'Clean Image');
     cla(app.ax_corrupted);
     title(app.ax_corrupted, 'Corrupted Image');
@@ -545,7 +544,7 @@ try
     app.img_blurred = b;
     app.psf         = psf;
 
-    imshow(b, [], 'Parent', app.ax_corrupted);
+    grayshow(app.ax_corrupted, b);
     title(app.ax_corrupted, 'Corrupted Image');
 
     app.lbl_status_c.Text = sprintf('Done.  Blur=%s  Noise=%s (%.3f)', ...
@@ -573,7 +572,7 @@ if isempty(app.img_blurred)
     return
 end
 
-imshow(app.img_blurred, [], 'Parent', app.ax_blurred);
+grayshow(app.ax_blurred, app.img_blurred);
 title(app.ax_blurred, 'Corrupted Input');
 
 app.lbl_imgpath.Text = '(from Corrupt tab)';
@@ -604,7 +603,7 @@ try
     app.img_original = [];   % GT unknown when loading a blurred image directly
     app.psf          = [];   % PSF also unknown
 
-    imshow(img, [], 'Parent', app.ax_blurred);
+    grayshow(app.ax_blurred, img);
     title(app.ax_blurred, 'Corrupted Input');
 
     app.lbl_imgpath.Text = fname;
@@ -677,6 +676,11 @@ app = fig.UserData;
 
 if app.solverRunning, return; end   % guard against double-click
 
+% Re-assert paths right before calling the solver — guards against the case
+% where MATLAB's path was modified after the app started.
+addpath(fullfile(app.appDir, 'algorithms'));
+addpath(fullfile(app.appDir, 'prox_operators'));
+
 if isempty(app.img_blurred)
     uialert(fig, 'Load a blurred image first (or use the Corrupt tab).', 'No image');
     return
@@ -709,7 +713,8 @@ config.verbose = false;   % suppress console spam while app is running
 % The callback definition lives here (one place); the invocation hooks are
 % in each solver — this is the only way to get per-iteration updates in
 % single-threaded MATLAB without a wrapper approach.
-config.display_callback = @(x, k) liveUpdate(x, k, fig, config.maxiter);
+% Wrap in try-catch so a display glitch never aborts the solver.
+config.display_callback = @(x, k) safeLiveUpdate(x, k, fig, config.maxiter);
 
 % --- Run solver ---
 try
@@ -730,7 +735,7 @@ try
     app.info      = info;
 
     % Final reconstruction display
-    imshow(x_sol, [], 'Parent', app.ax_recon);
+    grayshow(app.ax_recon, x_sol);
     title(app.ax_recon, sprintf('Reconstruction — %s (%d iters)', ...
                                  app.dd_algorithm.Value, info.iterations));
 
@@ -769,13 +774,29 @@ end
 %  HELPERS
 % =============================================================================
 
+function safeLiveUpdate(x_cur, k, fig, maxiter)
+% Wrapper that silently ignores display errors so they never abort the solver.
+try
+    liveUpdate(x_cur, k, fig, maxiter);
+catch
+    % display failed — just update the status text and continue
+    try
+        app = fig.UserData;
+        app.lbl_status.Text = sprintf('Running...  iter %d / %d', k, maxiter);
+        fig.UserData = app;
+        drawnow limitrate;
+    catch
+    end
+end
+end
+
+
 function liveUpdate(x_cur, k, fig, maxiter)
 % Refresh the reconstruction axes every iteration.
-% Called from inside each solver's loop via config.display_callback.
 % drawnow limitrate caps the refresh rate to ~20 Hz so drawing overhead
 % doesn't dominate the solver's runtime.
 app = fig.UserData;
-imshow(x_cur, [], 'Parent', app.ax_recon);
+grayshow(app.ax_recon, x_cur);
 app.lbl_status.Text = sprintf('Running...  iter %d / %d', k, maxiter);
 fig.UserData = app;
 drawnow limitrate;
@@ -789,12 +810,12 @@ app = fig.UserData;
 if isempty(app.img_recon), return; end
 
 % Show reconstruction
-imshow(app.img_recon, [], 'Parent', app.ax_recon_analysis);
+grayshow(app.ax_recon_analysis, app.img_recon);
 title(app.ax_recon_analysis, 'Reconstruction');
 
 % Show ground truth if available
 if ~isempty(app.img_original)
-    imshow(app.img_original, [], 'Parent', app.ax_original);
+    grayshow(app.ax_original, app.img_original);
     title(app.ax_original, 'Ground Truth');
 end
 
@@ -826,6 +847,16 @@ end
 
 fig.UserData = app;
 
+end
+
+
+function grayshow(ax, img)
+% Display a grayscale [0,1] double image in a uiaxes.
+% Uses imagesc + colormap instead of imshow — no Image Processing Toolbox needed.
+imagesc(ax, img);
+colormap(ax, gray(256));
+axis(ax, 'image');
+axis(ax, 'off');
 end
 
 
