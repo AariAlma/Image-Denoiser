@@ -34,8 +34,13 @@ app.iter_psnr     = [];
 app.iter_mse      = [];
 app.iter_ssim     = [];
 app.iter_snr      = [];
-app.currentChannel = 0;   % 0=grayscale, 1-3=processing color channel c
-app.recon_partial  = [];  % H×W×3 partial color recon during solve
+app.currentChannel   = 0;   % 0=grayscale, 1-3=processing color channel c
+app.recon_partial    = [];  % H×W×3 partial color recon during solve
+app.img_deblur_input = [];  % image explicitly sent to Deblur tab
+app.psf_deblur       = [];  % PSF for the deblur input ([] = identity)
+app.inputDir         = fullfile(appDir, 'input_images');
+app.outputDir        = fullfile(appDir, 'output_images');
+app.cleanImageName   = '';  % filename of the currently loaded clean image
 fig.UserData = app;
 
 % ---- Two regions ------------------------------------------------------------
@@ -193,12 +198,16 @@ PW = 256;
 y  = 555;
 
 % -- Load Image ---------------------------------------------------------------
-uilabel(panel,'Text','Load Image','Position',[5,y,PW,18],'FontWeight','bold');
-y = y - 30;
-uibutton(panel,'Text','Browse...','Position',[5,y,78,24], ...
+uilabel(panel,'Text','Input Images','Position',[5,y,PW,18],'FontWeight','bold');
+y = y - 26;
+app_tmp  = fig.UserData;
+imgFiles = getInputImages(app_tmp.inputDir);
+ddItems  = [{'(select from input folder...)'}; imgFiles];
+dd_clean = uidropdown(panel,'Items',ddItems,'Value',ddItems{1}, ...
+    'Position',[5,y,172,24], ...
+    'ValueChangedFcn',@(dd,~) cb_SelectInputClean(fig,dd));
+uibutton(panel,'Text','Browse...','Position',[182,y,PW-182,24], ...
     'ButtonPushedFcn',@(~,~) cb_BrowseClean(fig));
-lbl_path = uilabel(panel,'Text','No file selected', ...
-    'Position',[88,y,PW-88,24],'FontAngle','italic','WordWrap','on');
 y = y - 34;
 
 % -- Color mode ---------------------------------------------------------------
@@ -257,7 +266,7 @@ uibutton(panel,'Text','Use for Deblurring  >', ...
 
 % Store
 app = fig.UserData;
-app.lbl_imagepath_c = lbl_path;
+app.dd_input_c     = dd_clean;
 app.chk_grayscale  = chk_gray;
 app.dd_blur_c  = dd_blur;
 app.dd_noise_c = dd_noise;
@@ -285,12 +294,16 @@ y  = 555;
 
 % -- Load Blurred -------------------------------------------------------------
 uilabel(panel,'Text','Blurred Image','Position',[5,y,PW,18],'FontWeight','bold');
-y = y - 30;
-uibutton(panel,'Text','Browse...','Position',[5,y,78,24], ...
+y = y - 26;
+app_tmp  = fig.UserData;
+imgFiles = getInputImages(app_tmp.inputDir);
+ddItems  = [{'(use Corrupt tab or select below...)'}; imgFiles];
+dd_blur_in = uidropdown(panel,'Items',ddItems,'Value',ddItems{1}, ...
+    'Position',[5,y,172,24], ...
+    'ValueChangedFcn',@(dd,~) cb_SelectInputBlurred(fig,dd));
+uibutton(panel,'Text','Browse...','Position',[182,y,PW-182,24], ...
     'ButtonPushedFcn',@(~,~) cb_BrowseBlurred(fig));
-lbl_imgpath = uilabel(panel,'Text','(use Corrupt tab)', ...
-    'Position',[88,y,PW-88,24],'FontAngle','italic','WordWrap','on');
-y = y - 38;
+y = y - 34;
 
 % -- Ground Truth -------------------------------------------------------------
 uilabel(panel,'Text','Ground Truth  (PSNR)','Position',[5,y,PW,18],'FontWeight','bold');
@@ -355,6 +368,12 @@ y = y - 40;
 % -- PSNR display -------------------------------------------------------------
 lbl_metrics = uilabel(panel,'Text','', ...
     'Position',[5,y,PW,24],'FontWeight','bold','FontSize',12);
+y = y - 36;
+
+% -- Save result --------------------------------------------------------------
+uibutton(panel,'Text','Save Result...','Position',[5,y,PW,26], ...
+    'BackgroundColor',[0.25,0.25,0.25],'FontColor','white', ...
+    'ButtonPushedFcn',@(~,~) cb_SaveResult(fig));
 
 % Store
 app = fig.UserData;
@@ -368,7 +387,7 @@ app.ef_maxiter   = ef_maxiter;
 app.ef_tol       = ef_tol;
 app.btn_run      = btn_run;
 app.lbl_metrics  = lbl_metrics;
-app.lbl_imgpath  = lbl_imgpath;
+app.dd_input_d   = dd_blur_in;
 app.lbl_gtpath   = lbl_gtpath;
 app.lbl_rho      = lbl_rho;
 app.lbl_s        = lbl_s;
@@ -478,12 +497,18 @@ app = fig.UserData;
 if isequal(fname,0), return; end
 
 try
-    img = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
-    app.img_original = img;
-    app.imagePath    = fullfile(fpath,fname);
-    app.img_blurred  = [];
-    app.img_recon    = [];
-    app.lbl_imagepath_c.Text = fname;
+    [img, wasGray] = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
+    app.img_original   = img;
+    app.imagePath      = fullfile(fpath,fname);
+    app.img_blurred    = [];
+    app.img_recon      = [];
+    app.cleanImageName = fname;
+    % Add to input dropdown if not already listed, then select it
+    items = app.dd_input_c.Items;
+    if ~any(strcmp(items, fname))
+        app.dd_input_c.Items = [items; {fname}];
+    end
+    app.dd_input_c.Value = fname;
     fig.UserData = app;
 
     colorshow(app.ax_clean, img);
@@ -492,6 +517,9 @@ try
 
     appendLog(fig, sprintf('Loaded %s  [%d×%d %s]', fname, size(img,1), size(img,2), ...
         ternary(size(img,3)==3,'color','grayscale')));
+    if wasGray
+        appendLog(fig, 'Auto-converted: grayscale stored as RGB — using single channel');
+    end
 catch ME
     uialert(fig, ME.message, 'Error loading image');
     appendLog(fig, ['Load error: ' ME.message]);
@@ -563,7 +591,7 @@ try
 
     app.img_blurred = b;
     app.psf         = psf;
-    app.lbl_gtpath.Text = app.lbl_imagepath_c.Text;   % mirror GT path to Deblur panel
+    app.lbl_gtpath.Text = app.cleanImageName;   % mirror GT label to Deblur panel
     fig.UserData = app;
 
     colorshow(app.ax_corrupted, b);
@@ -585,9 +613,10 @@ if isempty(app.img_blurred)
     uialert(fig,'Apply corruption first.','No corrupted image');
     return
 end
+app.img_deblur_input = app.img_blurred;
+app.psf_deblur       = app.psf;
 colorshow(app.ax_blurred, app.img_blurred);
 title(app.ax_blurred,'Corrupted Input');
-app.lbl_imgpath.Text = '(from Corrupt tab)';
 fig.UserData = app;
 appendLog(fig,'Image sent to Deblur tab. Press Run Solver.');
 end
@@ -605,16 +634,24 @@ app = fig.UserData;
 if isequal(fname,0), return; end
 
 try
-    img = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
-    app.img_blurred  = img;
-    app.img_original = [];
-    app.psf          = [];
-    app.lbl_imgpath.Text = fname;
+    [img, wasGray] = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
+    app.img_deblur_input = img;
+    app.psf_deblur       = [];
+    app.img_original     = [];
+    % Add to input dropdown if not already listed, then select it
+    items = app.dd_input_d.Items;
+    if ~any(strcmp(items, fname))
+        app.dd_input_d.Items = [items; {fname}];
+    end
+    app.dd_input_d.Value = fname;
     fig.UserData = app;
     colorshow(app.ax_blurred, img);
     title(app.ax_blurred,'Corrupted Input');
     appendLog(fig, sprintf('Loaded blurred: %s  [%d×%d %s]', fname, size(img,1), size(img,2), ...
         ternary(size(img,3)==3,'color','grayscale')));
+    if wasGray
+        appendLog(fig, 'Auto-converted: grayscale stored as RGB — using single channel');
+    end
 catch ME
     uialert(fig, ME.message, 'Error loading image');
 end
@@ -629,12 +666,15 @@ app = fig.UserData;
 if isequal(fname,0), return; end
 
 try
-    img = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
+    [img, wasGray] = collapseIfGray(im2double(imread(fullfile(fpath,fname))));
     app.img_original   = img;
     app.lbl_gtpath.Text = fname;
     fig.UserData = app;
     appendLog(fig, sprintf('Ground truth loaded: %s  [%s]', fname, ...
         ternary(size(img,3)==3,'color','grayscale')));
+    if wasGray
+        appendLog(fig, 'Auto-converted: grayscale stored as RGB — using single channel');
+    end
 catch ME
     uialert(fig, ME.message, 'Error loading ground truth');
 end
@@ -672,11 +712,10 @@ function cb_RunSolver(fig)
 app = fig.UserData;
 if app.solverRunning, return; end
 
-if isempty(app.img_blurred)
-    uialert(fig,'Load a blurred image first.','No image');
+if isempty(app.img_deblur_input)
+    uialert(fig,'Send an image to the Deblur tab first (use "Use for Deblurring >" or Browse).','No image');
     return
 end
-if isempty(app.psf), app.psf = 1; end  % identity if PSF unknown
 
 % Re-assert paths
 addpath(fullfile(app.appDir,'algorithms'));
@@ -705,8 +744,9 @@ config.verbose = false;
 config.display_callback = @(x,k) safeLiveUpdate(x,k,fig,config.maxiter);
 
 try
-    b    = app.img_blurred;
-    psf  = app.psf;
+    b    = app.img_deblur_input;
+    psf  = app.psf_deblur;
+    if isempty(psf), psf = 1; end   % identity if PSF unknown (direct browse case)
     algo = app.dd_algorithm.Value;
     C    = size(b, 3);
 
@@ -964,16 +1004,19 @@ if cond, out = a; else, out = b; end
 end
 
 
-function img = collapseIfGray(img)
+function [img, wasConverted] = collapseIfGray(img)
 % If a 3-channel image has identical (or near-identical) channels,
 % reduce it to single-channel grayscale.
 % This handles grayscale images saved as RGB JPEGs (common with many tools).
 % Threshold: 2/255 — tight enough that real color images are never collapsed.
+% wasConverted is true when the auto-conversion fires.
+wasConverted = false;
 if size(img, 3) == 3
     maxDiff = max(max(max(abs(img(:,:,1) - img(:,:,2)))), ...
                   max(max(abs(img(:,:,1) - img(:,:,3)))));
     if maxDiff < 2/255
         img = img(:,:,1);
+        wasConverted = true;
     end
 end
 end
@@ -988,4 +1031,111 @@ switch algo
     case 'CP',   [x_ch, info_ch] = CP(b_ch,   psf, config);
     otherwise,   error('Unknown algorithm: %s', algo);
 end
+end
+
+
+function cb_SelectInputClean(fig, dd)
+% Load the image selected in the Corrupt panel's input-folder dropdown.
+val = dd.Value;
+if isempty(val) || val(1) == '(', return; end   % ignore placeholder items
+app = fig.UserData;
+fpath = fullfile(app.inputDir, val);
+try
+    [img, wasGray] = collapseIfGray(im2double(imread(fpath)));
+    app.img_original   = img;
+    app.imagePath      = fpath;
+    app.img_blurred    = [];
+    app.img_recon      = [];
+    app.cleanImageName = val;
+    fig.UserData = app;
+    colorshow(app.ax_clean, img);
+    title(app.ax_clean, 'Clean Image');
+    cla(app.ax_corrupted); title(app.ax_corrupted, 'Corrupted Image');
+    appendLog(fig, sprintf('Loaded %s  [%d×%d %s]', val, size(img,1), size(img,2), ...
+        ternary(size(img,3)==3,'color','grayscale')));
+    if wasGray
+        appendLog(fig, 'Auto-converted: grayscale stored as RGB — using single channel');
+    end
+catch ME
+    uialert(fig, ME.message, 'Error loading image');
+    appendLog(fig, ['Load error: ' ME.message]);
+end
+end
+
+
+function cb_SelectInputBlurred(fig, dd)
+% Load the image selected in the Deblur panel's input-folder dropdown.
+val = dd.Value;
+if isempty(val) || val(1) == '(', return; end   % ignore placeholder items
+app = fig.UserData;
+fpath = fullfile(app.inputDir, val);
+try
+    [img, wasGray] = collapseIfGray(im2double(imread(fpath)));
+    app.img_deblur_input = img;
+    app.psf_deblur       = [];
+    app.img_original     = [];
+    fig.UserData = app;
+    colorshow(app.ax_blurred, img);
+    title(app.ax_blurred, 'Corrupted Input');
+    appendLog(fig, sprintf('Loaded blurred: %s  [%d×%d %s]', val, size(img,1), size(img,2), ...
+        ternary(size(img,3)==3,'color','grayscale')));
+    if wasGray
+        appendLog(fig, 'Auto-converted: grayscale stored as RGB — using single channel');
+    end
+catch ME
+    uialert(fig, ME.message, 'Error loading image');
+    appendLog(fig, ['Load error: ' ME.message]);
+end
+end
+
+
+function cb_SaveResult(fig)
+% Save the current reconstruction to output_images/<input_name>/result_NNN.png.
+% A subdirectory is created per input image; files are auto-incremented.
+app = fig.UserData;
+if isempty(app.img_recon)
+    uialert(fig, 'Run the solver first — nothing to save yet.', 'No result');
+    return
+end
+
+% Subdirectory name = input image base name (no extension)
+if ~isempty(app.cleanImageName)
+    [~, imgBase] = fileparts(app.cleanImageName);
+elseif ~isempty(app.imagePath)
+    [~, imgBase] = fileparts(app.imagePath);
+else
+    imgBase = 'unknown';
+end
+
+% Build per-image subdirectory inside output_images/
+subDir = fullfile(app.outputDir, imgBase);
+if ~isfolder(subDir)
+    mkdir(subDir);
+end
+
+% Auto-increment: count existing result_NNN.png files
+existing = dir(fullfile(subDir, 'result_*.png'));
+n        = numel(existing) + 1;
+defName  = sprintf('result_%03d.png', n);
+
+% Save dialog pre-filled with the right folder and incremented name
+[fname, fpath] = uiputfile( ...
+    {'*.png','PNG image'; '*.tif;*.tiff','TIFF image'}, ...
+    'Save reconstruction', fullfile(subDir, defName));
+if isequal(fname, 0), return; end
+imwrite(im2uint8(app.img_recon), fullfile(fpath, fname));
+appendLog(fig, sprintf('Saved: output_images/%s/%s', imgBase, fname));
+end
+
+
+function files = getInputImages(inputDir)
+% Return a sorted cell array of image filenames found in inputDir.
+files = {};
+if ~isfolder(inputDir), return; end
+exts = {'*.png','*.jpg','*.jpeg','*.bmp','*.tif','*.tiff'};
+for e = 1:numel(exts)
+    d = dir(fullfile(inputDir, exts{e}));
+    files = [files; {d.name}'];  %#ok<AGROW>
+end
+files = unique(files);
 end
