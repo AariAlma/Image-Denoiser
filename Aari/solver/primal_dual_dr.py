@@ -88,6 +88,27 @@ def _prox_l2_shifted(v, b, tau, xp):
     return (v + 2.0 * tau * b) / (1.0 + 2.0 * tau)
 
 
+def _prox_huber_shifted(v, b, tau, delta, xp):
+    """prox_{tau * phi_delta(. - b)}(v)  —  Huber data fidelity.
+
+    phi_delta(r) = r²/(2·delta)  if |r| ≤ delta  (L2)
+                 = |r| - delta/2  if |r| > delta  (L1)
+
+    Closed-form prox (elementwise):
+        |c| ≤ delta + tau  →  c · delta / (delta + tau)   (L2 shrinkage)
+        |c| > delta + tau  →  sign(c) · (|c| - tau)       (soft threshold)
+    """
+    c = v - b
+    abs_c = xp.abs(c)
+    transition = delta + tau
+    r = xp.where(
+        abs_c <= transition,
+        c * delta / transition,
+        xp.sign(c) * xp.maximum(abs_c - tau, 0.0),
+    )
+    return b + r
+
+
 def _prox_iso(vx, vy, lam, xp, eps=1e-12):
     lam = max(lam, 0.0)
     r = xp.sqrt(vx**2 + vy**2)
@@ -111,6 +132,7 @@ def primal_dual_dr_solve(
     verbose=True,
     print_every=50,
     use_gpu=False,
+    huber_delta=0.1,
 ):
     """
     Primal-Dual Douglas-Rachford splitting for image deblurring / denoising.
@@ -157,8 +179,8 @@ def primal_dual_dr_solve(
         'time_sec'    : wall-clock time
         'used_gpu'    : bool
     """
-    if problem not in ("l1", "l2"):
-        raise ValueError("problem must be 'l1' or 'l2'.")
+    if problem not in ("l1", "l2", "huber"):
+        raise ValueError("problem must be 'l1', 'l2', or 'huber'.")
     if not (0 < rho < 2):
         raise ValueError("rho must satisfy 0 < rho < 2.")
 
@@ -210,8 +232,10 @@ def primal_dual_dr_solve(
         # Dual: prox_{t*g*}(w) = w - t * prox_{g/t}(w/t)  [Moreau identity]
         if problem == "l1":
             pg1 = _prox_l1_shifted(w1 / t, b, 1.0 / t, xp)
-        else:
+        elif problem == "l2":
             pg1 = _prox_l2_shifted(w1 / t, b, 1.0 / t, xp)
+        else:  # huber
+            pg1 = _prox_huber_shifted(w1 / t, b, 1.0 / t, huber_delta, xp)
 
         pg2, pg3 = _prox_iso(w2 / t, w3 / t, gamma / t, xp)
 
@@ -261,8 +285,15 @@ def primal_dual_dr_solve(
         tv = float(xp.sum(xp.sqrt(gx**2 + gy**2)))
         if problem == "l1":
             fidelity = float(xp.sum(xp.abs(Kx - b)))
-        else:
+        elif problem == "l2":
             fidelity = float(xp.sum((Kx - b)**2))
+        else:  # huber
+            r = xp.abs(Kx - b)
+            fidelity = float(xp.sum(xp.where(
+                r <= huber_delta,
+                r**2 / (2.0 * huber_delta),
+                r - huber_delta / 2.0,
+            )))
         history_obj.append(fidelity + gamma * tv)
 
         if verbose and (k == 1 or k % print_every == 0):

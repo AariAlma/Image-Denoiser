@@ -14,6 +14,7 @@ Outputs (auto-numbered so previous runs are never overwritten):
     PDDR_GammaSearch_optimal_N.png      — optimal gamma & PSNR vs noise level
 """
 
+import csv
 import os
 import math
 import numpy as np
@@ -39,12 +40,13 @@ BLUR_SIGMA    = 2.0
 SEED          = 0
 
 NOISE_TYPES   = ["gaussian", "saltpepper"]
-PROBLEMS      = ["l1", "l2"]
+PROBLEMS      = ["l1", "l2", "huber"]
 
 # Per-problem solver params (from sweep results)
 SOLVER_PARAMS = {
-    "l1": {"t": 0.25, "rho": 0.5},
-    "l2": {"t": 1.0,  "rho": 1.0},
+    "l1":    {"t": 0.25, "rho": 0.5},
+    "l2":    {"t": 1.0,  "rho": 1.0},
+    "huber": {"t": 0.25, "rho": 0.5, "delta": 0.1},
 }
 
 MAXITER       = 500
@@ -62,10 +64,12 @@ _PHI = (math.sqrt(5) - 1) / 2   # golden ratio conjugate ≈ 0.618
 
 NOISE_LABELS = {"gaussian": "Gaussian", "saltpepper": "Salt & Pepper"}
 COMBO_STYLES = {
-    ("gaussian",    "l1"): dict(color="tab:blue",   linestyle="-",  marker="o"),
-    ("gaussian",    "l2"): dict(color="tab:blue",   linestyle="--", marker="s"),
-    ("saltpepper",  "l1"): dict(color="tab:orange", linestyle="-",  marker="o"),
-    ("saltpepper",  "l2"): dict(color="tab:orange", linestyle="--", marker="s"),
+    ("gaussian",   "l1"):    dict(color="tab:blue",   linestyle="-",  marker="o"),
+    ("gaussian",   "l2"):    dict(color="tab:blue",   linestyle="--", marker="s"),
+    ("gaussian",   "huber"): dict(color="tab:blue",   linestyle=":",  marker="^"),
+    ("saltpepper", "l1"):    dict(color="tab:orange", linestyle="-",  marker="o"),
+    ("saltpepper", "l2"):    dict(color="tab:orange", linestyle="--", marker="s"),
+    ("saltpepper", "huber"): dict(color="tab:orange", linestyle=":",  marker="^"),
 }
 
 
@@ -81,6 +85,7 @@ def _evaluate(log_gamma, b, psf, x_true, problem):
         b, psf,
         problem=problem, gamma=gamma,
         t=sp["t"], rho=sp["rho"],
+        huber_delta=sp.get("delta", 0.1),
         maxiter=MAXITER, tol=TOL,
         verbose=False, use_gpu=USE_GPU,
     )
@@ -165,6 +170,23 @@ def main():
                 print(f"  {nl:>8.2f}  {bg:>12.5f}  {bp:>10.3f}")
 
     # ---- Plot 1: 2×2 grid of evaluation scatter plots -----------------------
+    # ---- Save CSV ------------------------------------------------------------
+    csv_fname = _next_path("PDDR_GammaSearch_optimal", "csv")
+    with open(csv_fname, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["noise_type", "problem", "noise_level", "optimal_gamma", "psnr_db"])
+        writer.writeheader()
+        for noise_type in NOISE_TYPES:
+            for problem in PROBLEMS:
+                for nl, bg, bp, _ in combo_results[(noise_type, problem)]:
+                    writer.writerow({
+                        "noise_type":    noise_type,
+                        "problem":       problem,
+                        "noise_level":   nl,
+                        "optimal_gamma": round(bg, 6),
+                        "psnr_db":       round(bp, 4),
+                    })
+    print(f"Saved → {csv_fname}")
+
     fig1, axes1 = plt.subplots(
         len(PROBLEMS), len(NOISE_TYPES),
         figsize=(6 * len(NOISE_TYPES), 4 * len(PROBLEMS)),
