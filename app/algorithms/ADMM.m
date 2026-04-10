@@ -83,6 +83,9 @@ denom = 1.0 + abs(k_hat).^2 + laplacianSymbol(H, W);   % (H x W) real
 % 3. Initialize all 9 ADMM variables
 % -------------------------------------------------------------------------
 x = b;              % primal image variable (H x W), start from observation
+if isfield(config, 'x_init') && ~isempty(config.x_init)
+    x = config.x_init;   % use caller-supplied initial guess
+end
 
 u = b;              % auxiliary copy of x for the box constraint (H x W)
 w = zeros(H, W);    % scaled dual for the x = u constraint (H x W)

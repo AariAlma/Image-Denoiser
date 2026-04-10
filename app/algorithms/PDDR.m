@@ -83,6 +83,9 @@ denom = 1.0 + t^2 * (abs(k_hat).^2 + laplacianSymbol(H, W));   % (H x W) real
 % It is NOT the solution itself -- the solution is proj_[0,1](z).
 % Starting from b is a reasonable warm start.
 z = b;                      % (H x W) primal envelope
+if isfield(config, 'x_init') && ~isempty(config.x_init)
+    z = config.x_init;      % use caller-supplied initial guess
+end
 
 % w1, w2, w3 are the dual envelope variables for each output channel of A:
 %   w1 <--> blur channel   (K x, dimension H x W)

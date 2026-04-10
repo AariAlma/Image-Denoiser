@@ -77,6 +77,9 @@ k_hat = psfToOtf(psf, H, W);   % (H x W) complex
 
 % Primal variable: the image we are reconstructing
 x = b;              % (H x W) start from the blurred observation
+if isfield(config, 'x_init') && ~isempty(config.x_init)
+    x = config.x_init;   % use caller-supplied initial guess
+end
 
 % Extrapolated primal: used in the dual update (starts equal to x)
 z = b;              % (H x W) z = 2*x - x_prev (Polyak-like extrapolation)

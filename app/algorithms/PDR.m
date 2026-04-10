@@ -81,6 +81,9 @@ denom = 1.0 + abs(k_hat).^2 + laplacianSymbol(H, W);   % (H x W) real
 
 % z1: primal envelope in image space (H x W)
 z1 = zeros(nrows, ncols);
+if isfield(config, 'x_init') && ~isempty(config.x_init)
+    z1 = config.x_init;    % use caller-supplied initial guess
+end
 
 % z2: augmented envelope in range of A (H x W x 3)
 % z2(:,:,1) = blur channel, z2(:,:,2) = horiz grad, z2(:,:,3) = vert grad
