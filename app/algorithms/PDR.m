@@ -53,13 +53,14 @@ function [x_sol, info] = PDR(b, psf, config)
 % -------------------------------------------------------------------------
 % 1. Read config with defaults
 % -------------------------------------------------------------------------
-problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1' or 'l2'
+problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
 gamma   = fieldOrDefault(config, 'gamma',   0.006);  % TV regularization weight
 t       = fieldOrDefault(config, 't',       1.0);    % step size (enters via prox of g)
 rho     = fieldOrDefault(config, 'rho',     1.0);    % DR relaxation (0 < rho < 2)
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations
 tol     = fieldOrDefault(config, 'tol',     1e-4);   % convergence tolerance
 verbose = fieldOrDefault(config, 'verbose', true);   % print progress?
+delta   = fieldOrDefault(config, 'delta',   0.1);    % Huber transition threshold
 
 % -------------------------------------------------------------------------
 % 2. Pre-compute fixed quantities
@@ -134,6 +135,9 @@ for k = 1:maxiter
     if strcmp(problem, 'l1')
         % prox_{t * ||. - b||_1}(z2(:,:,1))  = b + softThresh(z2 - b, t)
         y_k(:,:,1) = l1ShiftProx(z2(:,:,1), b, t);
+    elseif strcmp(problem, 'huber')
+        % prox_{t * phi_delta(. - b)}(z2(:,:,1))
+        y_k(:,:,1) = huberShiftProx(z2(:,:,1), b, t, delta);
     else
         % prox_{t * ||. - b||_2^2}(z2(:,:,1))  = (z2 + 2*t*b) / (1 + 2*t)
         y_k(:,:,1) = l2shiftprox(z2(:,:,1), b, t);
@@ -187,6 +191,9 @@ for k = 1:maxiter
 
     if strcmp(problem, 'l1')
         fidelity = sum(abs(Kx(:) - b(:)));              % L1 data fidelity
+    elseif strcmp(problem, 'huber')
+        r = Kx(:) - b(:);
+        fidelity = sum(huberVal(r, delta));              % Huber data fidelity
     else
         fidelity = sum((Kx(:) - b(:)).^2);              % L2 data fidelity
     end
@@ -296,6 +303,13 @@ if isfield(s, field)
 else
     val = default;
 end
+end
+
+
+function v = huberVal(r, delta)
+% Element-wise Huber loss: r^2/2 for |r|<=delta, delta*(|r|-delta/2) for |r|>delta
+small = abs(r) <= delta;
+v = small .* (r.^2 / 2) + (~small) .* (delta * (abs(r) - delta/2));
 end
 
 

@@ -55,6 +55,7 @@ rho     = fieldOrDefault(config, 'rho',     1.0);    % DR relaxation (0 < rho < 
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % iteration cap
 tol     = fieldOrDefault(config, 'tol',     1e-4);   % convergence tolerance
 verbose = fieldOrDefault(config, 'verbose', true);   % whether to print progress
+delta   = fieldOrDefault(config, 'delta',   0.1);    % Huber transition threshold
 
 % -------------------------------------------------------------------------
 % 2. Pre-compute fixed quantities (done once before the loop)
@@ -131,6 +132,9 @@ for k = 1:maxiter
     if strcmp(problem, 'l1')
         % L1 data fidelity: soft-threshold shifted by b
         pg1 = l1ShiftProx(w1 / t, b, 1/t);     % prox_{(1/t)*||.-b||_1}(w1/t)
+    elseif strcmp(problem, 'huber')
+        % Huber data fidelity: smooth L2 near zero, L1 in tails
+        pg1 = huberShiftProx(w1 / t, b, 1/t, delta);
     else
         % L2 data fidelity: shrink toward b
         pg1 = l2shiftprox(w1 / t, b, 1/t);     % prox_{(1/t)*||.-b||_2^2}(w1/t)
@@ -215,6 +219,9 @@ for k = 1:maxiter
 
     if strcmp(problem, 'l1')
         fidelity = sum(abs(Kx(:) - b(:)));     % L1: sum of absolute residuals
+    elseif strcmp(problem, 'huber')
+        r = Kx(:) - b(:);
+        fidelity = sum(huberVal(r, delta));     % Huber loss
     else
         fidelity = sum((Kx(:) - b(:)).^2);     % L2: sum of squared residuals
     end
@@ -367,6 +374,13 @@ if isfield(s, field)
 else
     val = default;      % field missing: use the default
 end
+end
+
+
+function v = huberVal(r, delta)
+% Element-wise Huber loss: r^2/2 for |r|<=delta, delta*(|r|-delta/2) for |r|>delta
+small = abs(r) <= delta;
+v = small .* (r.^2 / 2) + (~small) .* (delta * (abs(r) - delta/2));
 end
 
 

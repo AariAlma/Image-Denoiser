@@ -55,13 +55,14 @@ function [x_sol, info] = CP(b, psf, config)
 % -------------------------------------------------------------------------
 % 1. Read config with defaults
 % -------------------------------------------------------------------------
-problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1' or 'l2'
+problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
 gamma   = fieldOrDefault(config, 'gamma',   0.006);  % TV regularization weight
 t       = fieldOrDefault(config, 't',       0.2);    % primal step size (tau)
 s       = fieldOrDefault(config, 's',       0.2);    % dual step size (sigma)
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations
 tol     = fieldOrDefault(config, 'tol',     1e-4);   % convergence tolerance
 verbose = fieldOrDefault(config, 'verbose', true);   % print progress?
+delta   = fieldOrDefault(config, 'delta',   0.1);    % Huber transition threshold
 
 % -------------------------------------------------------------------------
 % 2. Pre-compute fixed quantities
@@ -130,6 +131,9 @@ for k = 1:maxiter
         % L1 data fidelity
         % prox_{(1/s)*||.-b||_1}(v1/s)  = b + softThresh(v1/s - b, 1/s)
         p1 = l1ShiftProx(v1/s, b, 1/s);
+    elseif strcmp(problem, 'huber')
+        % Huber data fidelity: prox_{(1/s)*phi_delta(.-b)}(v1/s)
+        p1 = huberShiftProx(v1/s, b, 1/s, delta);
     else
         % L2 data fidelity: g_1(y) = 0.5 * ||y - b||_2^2
         % prox_{(1/(2s))*||.-b||_2^2}(v1/s)  -- note the 0.5 factor!
@@ -193,6 +197,9 @@ for k = 1:maxiter
 
     if strcmp(problem, 'l1')
         fidelity = sum(abs(Kx(:) - b(:)));          % L1 fidelity
+    elseif strcmp(problem, 'huber')
+        r = Kx(:) - b(:);
+        fidelity = sum(huberVal(r, delta));          % Huber fidelity
     else
         fidelity = 0.5 * sum((Kx(:) - b(:)).^2);   % L2 fidelity (0.5 factor matches CP)
     end
@@ -296,4 +303,11 @@ if isfield(s, field)
 else
     val = default;
 end
+end
+
+
+function v = huberVal(r, delta)
+% Element-wise Huber loss: r^2/2 for |r|<=delta, delta*(|r|-delta/2) for |r|>delta
+small = abs(r) <= delta;
+v = small .* (r.^2 / 2) + (~small) .* (delta * (abs(r) - delta/2));
 end
