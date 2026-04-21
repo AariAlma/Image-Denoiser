@@ -191,7 +191,7 @@ for k = 1:maxiter
     elseif strcmp(problem, 'huber')
         y1 = huberShiftProx(y1_arg, b, tau, delta);  % Huber prox
     else
-        y1 = l2shiftprox(y1_arg, b, tau);       % quadratic shrinkage toward b
+        y1 = l2ShiftProx(y1_arg, b, tau);       % quadratic shrinkage toward b
     end
 
     % Channels 2 & 3: isotropic TV prox  = prox_{tau * gamma * iso}(y2, y3)

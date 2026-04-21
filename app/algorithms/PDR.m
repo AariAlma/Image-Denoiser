@@ -140,7 +140,7 @@ for k = 1:maxiter
         y_k(:,:,1) = huberShiftProx(z2(:,:,1), b, t, delta);
     else
         % prox_{t * ||. - b||_2^2}(z2(:,:,1))  = (z2 + 2*t*b) / (1 + 2*t)
-        y_k(:,:,1) = l2shiftprox(z2(:,:,1), b, t);
+        y_k(:,:,1) = l2ShiftProx(z2(:,:,1), b, t);
     end
     % prox_{t*gamma * iso}(z2(:,:,2), z2(:,:,3))  -- isotropic shrinkage
     [y_k(:,:,2), y_k(:,:,3)] = isoProx(z2(:,:,2), z2(:,:,3), t * gamma);

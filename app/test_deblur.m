@@ -814,14 +814,14 @@ catch e
     fprintf('  [FAIL]  %s\n         %s\n', tname, e.message);
 end
 
-% l2shiftprox: shift property
-tname = 'S13: l2shiftprox = b + l2prox(y-b, t)';
+% l2ShiftProx: shift property
+tname = 'S13: l2ShiftProx = b + l2Prox(y-b, t)';
 try
     y  = randn(1, 10);
     b_v = randn(1, 10);
     t  = 0.5;
-    expected = b_v + l2prox(y - b_v, t);
-    got      = l2shiftprox(y, b_v, t);
+    expected = b_v + l2Prox(y - b_v, t);
+    got      = l2ShiftProx(y, b_v, t);
     assert(max(abs(expected(:) - got(:))) < 1e-12);
     nPass = nPass+1; fprintf('  [PASS]  %s\n', tname);
 catch e
@@ -829,12 +829,12 @@ catch e
     fprintf('  [FAIL]  %s\n         %s\n', tname, e.message);
 end
 
-% l2prox: scaling property
-tname = 'S13: l2prox scales by 1/(2t+1)';
+% l2Prox: scaling property
+tname = 'S13: l2Prox scales by 1/(2t+1)';
 try
     x_v = randn(1, 10); t = 2.0;
     expected = x_v / (2*t + 1);
-    got      = l2prox(x_v, t);
+    got      = l2Prox(x_v, t);
     assert(max(abs(expected(:) - got(:))) < 1e-12);
     nPass = nPass+1; fprintf('  [PASS]  %s\n', tname);
 catch e

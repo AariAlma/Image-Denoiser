@@ -66,8 +66,8 @@ project/app/
 │   ├── boxProx.m             Projection onto [0,1]
 │   ├── l1Prox.m              Soft thresholding
 │   ├── l1ShiftProx.m         Shifted L1 proximal
-│   ├── l2prox.m              L2 Moreau scaling
-│   ├── l2shiftprox.m         Shifted L2 proximal
+│   ├── l2Prox.m              L2 Moreau scaling
+│   ├── l2ShiftProx.m         Shifted L2 proximal
 │   ├── isoProx.m             Isotropic TV proximal
 │   └── huberShiftProx.m      Huber loss proximal
 │
@@ -417,8 +417,8 @@ All operators are in `prox_operators/` and must be on the MATLAB path.
 | `boxProx` | `x = boxProx(v)` | `clip(v, 0, 1)` |
 | `l1Prox` | `x = l1Prox(v, t)` | `sign(v) · max(|v| - t, 0)` |
 | `l1ShiftProx` | `y = l1ShiftProx(v, b, t)` | `b + l1Prox(v - b, t)` |
-| `l2prox` | `x = l2prox(v, t)` | `v / (2t + 1)` |
-| `l2shiftprox` | `y = l2shiftprox(v, b, t)` | `b + l2prox(v - b, t)` |
+| `l2Prox` | `x = l2Prox(v, t)` | `v / (2t + 1)` |
+| `l2ShiftProx` | `y = l2ShiftProx(v, b, t)` | `b + l2Prox(v - b, t)` |
 | `isoProx` | `[u,v] = isoProx(a, b, t)` | Scale `(a,b)` by `max(1 - t/r, 0)` where `r = sqrt(a²+b²)` |
 | `huberShiftProx` | `y = huberShiftProx(v, b, t, delta)` | L2 branch for `\|v-b\| ≤ (1+t)δ`, L1 branch otherwise |
 

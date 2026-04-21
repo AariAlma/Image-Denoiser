@@ -137,7 +137,7 @@ for k = 1:maxiter
         pg1 = huberShiftProx(w1 / t, b, 1/t, delta);
     else
         % L2 data fidelity: shrink toward b
-        pg1 = l2shiftprox(w1 / t, b, 1/t);     % prox_{(1/t)*||.-b||_2^2}(w1/t)
+        pg1 = l2ShiftProx(w1 / t, b, 1/t);     % prox_{(1/t)*||.-b||_2^2}(w1/t)
     end
     v1_half = w1 - t * pg1;     % Moreau: w1 - t * prox_{g1/t}(w1/t)
 
