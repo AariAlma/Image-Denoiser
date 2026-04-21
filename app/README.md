@@ -11,36 +11,41 @@ test suite.
 
 1. [Quick Start](#quick-start)
 2. [Directory Structure](#directory-structure)
-3. [Entry Point: `deblur()`](#entry-point-deblur)
-4. [Algorithms](#algorithms)
-5. [Graphical Interface: `DeblurApp`](#graphical-interface-deblurapp)
+3. [Default Driver: `run_defaults`](#default-driver-run_defaults)
+4. [Entry Point: `deblur()`](#entry-point-deblur)
+5. [Algorithms](#algorithms)
+6. [Graphical Interface: `DeblurApp`](#graphical-interface-deblurapp)
    - [Corrupt Tab](#corrupt-tab)
    - [Deblur Tab](#deblur-tab)
    - [Analysis Tab](#analysis-tab)
    - [Tune Tab](#tune-tab)
-6. [Corruption Pipeline](#corruption-pipeline)
-7. [Proximal Operators](#proximal-operators)
-8. [Quality Metrics](#quality-metrics)
-9. [Test Images](#test-images)
-10. [Test Suite](#test-suite)
+7. [Corruption Pipeline](#corruption-pipeline)
+8. [Proximal Operators](#proximal-operators)
+9. [Quality Metrics](#quality-metrics)
+10. [Test Images](#test-images)
+11. [Test Suite](#test-suite)
 
 ---
 
 ## Quick Start
 
 ```matlab
-% Add paths (or run from project/app/ — paths are added automatically)
+% One-shot: run every algorithm on both L1 and L2 problems with
+% spec-mandated defaults (loads input_images/manWithHat.tiff).
+run_defaults
+
+% Manual call: add paths and deblur a single image
 addpath('project/app')
 addpath('project/app/algorithms')
 addpath('project/app/prox_operators')
 
-% Build a corrupted image
 psf = gaussianPSF(9, 2.0);
 b   = imfilter(im2double(imread('input_images/cameraman.jpg')), psf, 'circular');
 b   = b + 0.02 * randn(size(b));
 
-% Deblur with defaults
-x = deblur('l2', 'PDDR', [], psf, b);
+x = deblur('l2', 'PDDR', [], psf, b);              % short algorithm name
+x = deblur('l2', 'douglasrachfordprimaldual', ...  % spec-compliant long name
+           [], psf, b);
 
 % Launch the GUI
 DeblurApp
@@ -52,7 +57,8 @@ DeblurApp
 
 ```
 project/app/
-├── deblur.m                  Entry-point function (teacher spec)
+├── deblur.m                  Entry-point function (spec-compliant)
+├── run_defaults.m            Spec-mandated driver — all 8 algorithm×problem combos
 ├── DeblurApp.m               GUI application
 ├── test_deblur.m             Test suite (~90 tests)
 │
@@ -89,6 +95,35 @@ project/app/
 
 ---
 
+## Default Driver: `run_defaults`
+
+```matlab
+run_defaults
+```
+
+Spec-mandated "run everything with defaults" driver. Executes all four
+algorithms on both the L1 and L2 problems (8 combinations total) using the
+default parameters from Table 1 of the project spec. Per-iteration progress
+and an end-of-run summary are printed for each run.
+
+The driver builds a corrupted test image from `input_images/cameraman.jpg`
+(Gaussian blur 9×9 σ=2.0, Gaussian noise 0.02, seed 0). To swap the image or
+starting point, edit the two clearly marked lines near the top of the file.
+
+Default parameters used:
+
+| Parameter | Value |
+|---|---|
+| `maxiter` | 500 |
+| `gammal1` | 0.006 |
+| `gammal2` | 0.012 |
+| `tprimaldr` / `rhoprimaldr` | 0.25 / 1.25 |
+| `tprimaldualdr` / `rhoprimaldualdr` | 1.0 / 1.0 |
+| `tadmm` / `rhoadmm` | 1.0 / 1.0 |
+| `tcp` / `scp` | 0.25 / 0.25 |
+
+---
+
 ## Entry Point: `deblur()`
 
 ```matlab
@@ -101,46 +136,90 @@ x = deblur(problem, algorithm, xinitial, kernel, b, i)
 | Argument | Type | Description |
 |---|---|---|
 | `problem` | string | `'l1'`, `'l2'`, or `'huber'` — data fidelity term |
-| `algorithm` | string | `'PDR'`, `'PDDR'`, `'ADMM'`, `'CP'` — case-insensitive |
+| `algorithm` | string | Short or long form, case-insensitive (see table below) |
 | `xinitial` | H×W double or `[]` | Initial guess; `[]` starts from `b` |
 | `kernel` | kH×kW double | Point-spread function (any size ≤ image) |
 | `b` | H×W double | Blurred + noisy observation, values in [0,1] |
-| `i` | struct (optional) | Parameter overrides — see table below |
+| `i` | struct (optional) | Parameter overrides — see tables below |
+
+### Algorithm names
+
+Both short aliases and the spec-mandated long names are accepted (case-insensitive):
+
+| Short alias | Spec-compliant long name |
+|---|---|
+| `'PDR'` | `'douglasrachfordprimal'` |
+| `'PDDR'` | `'douglasrachfordprimaldual'` |
+| `'ADMM'` | `'admm'` |
+| `'CP'` | `'chambollepock'` |
 
 ### Parameter struct `i`
 
 Any subset of these fields may be specified. Unset fields use algorithm defaults.
 
-| Field | Default (PDR) | Default (ADMM) | Default (PDDR/CP) | Description |
-|---|---|---|---|---|
-| `gamma` | 0.006 (L1) / 0.012 (L2) | same | same | TV regularization weight |
-| `t` | 0.25 | 1.0 | 1.0 | Primal step size |
-| `rho` | 1.25 | 1.0 | 1.0 | Over-relaxation / ADMM penalty |
-| `s` | — | — | 0.25 (CP only) | Dual step size (Chambolle-Pock) |
-| `maxiter` | 500 | 200 | 500 | Maximum iterations |
-| `tol` | 1e-4 | 1e-4 | 1e-4 | Convergence tolerance (relative change) |
-| `delta` | 0.1 | 0.1 | 0.1 | Huber loss transition threshold |
+**Generic fields** (accepted by all algorithms):
+
+| Field | Default (PDR) | Default (PDDR) | Default (ADMM) | Default (CP) | Description |
+|---|---|---|---|---|---|
+| `gamma` | 0.006 (L1) / 0.012 (L2) | same | same | same | TV regularization weight |
+| `t` | 0.25 | 1.0 | 1.0 | computed from `\|\|A\|\|` | Primal step size |
+| `rho` | 1.25 | 1.0 | 1.0 | 1.0 | Over-relaxation / ADMM penalty |
+| `s` | — | — | — | 0.25 | Dual step size (Chambolle-Pock only) |
+| `maxiter` | 500 | 500 | 200 | 500 | Maximum iterations |
+| `tol` | 1e-4 | 1e-4 | 1e-4 | 1e-4 | Convergence tolerance (relative change) |
+| `delta` | 0.1 | 0.1 | 0.1 | 0.1 | Huber loss transition threshold |
+| `verbose` | true | true | true | true | Print per-iteration progress |
+
+**Spec-mandated qualified fields** (take precedence over the generic fields above):
+
+| Qualified field | Generic equivalent | Algorithm |
+|---|---|---|
+| `gammal1` | `gamma` | all (L1 problem) |
+| `gammal2` | `gamma` | all (L2 problem) |
+| `tprimaldr` | `t` | PDR |
+| `rhoprimaldr` | `rho` | PDR |
+| `tprimaldualdr` | `t` | PDDR |
+| `rhoprimaldualdr` | `rho` | PDDR |
+| `tadmm` | `t` | ADMM |
+| `rhoadmm` | `rho` | ADMM |
+| `tcp` | `t` | CP |
+| `scp` | `s` | CP |
+
+Precedence order: qualified field > generic field > algorithm default.
 
 ### Output
 
 `x` — H×W double, reconstructed image in [0,1].
 
-A printed summary is always produced showing algorithm, iterations, objective value,
-CPU time, and convergence status.
+**Printed output** (two parts):
+
+1. *Per-iteration progress* — each iteration prints `iter NNNN  obj=...  rel_change=...`.
+   Suppress with `i.verbose = false`.
+2. *End-of-run summary* — always printed; shows algorithm, iterations, final
+   objective, CPU time, and convergence status.
 
 ### Examples
 
 ```matlab
-% Minimal call
+% Minimal call — short alias
 x = deblur('l2', 'ADMM', [], psf, b);
 
-% With warm start and custom gamma
-i.gamma   = 0.008;
-i.maxiter = 300;
-x = deblur('l2', 'ADMM', x_prev, psf, b, i);
+% Spec-compliant long algorithm names
+x = deblur('l1', 'douglasrachfordprimal',     [], psf, b);
+x = deblur('l1', 'douglasrachfordprimaldual', [], psf, b);
+x = deblur('l1', 'admm',                      [], psf, b);
+x = deblur('l1', 'chambollepock',             [], psf, b);
 
-% L1 fidelity (salt-and-pepper noise)
-x = deblur('l1', 'PDDR', [], psf, b_sp);
+% Spec-compliant qualified parameter fields
+i.maxiter      = 300;
+i.gammal2      = 0.010;
+i.tprimaldr    = 0.25;
+i.rhoprimaldr  = 1.25;
+x = deblur('l2', 'douglasrachfordprimal', [], psf, b, i);
+
+% Suppress per-iteration output
+i.verbose = false;
+x = deblur('l2', 'ADMM', [], psf, b, i);
 
 % Huber fidelity with custom delta
 i.delta = 0.05;
