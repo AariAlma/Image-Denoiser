@@ -402,7 +402,7 @@ y = y - 30;
 
 % Row 1: gamma, t
 uilabel(panel,'Text','gamma:','Position',[5,y,44,22]);
-ef_gamma = uieditfield(panel,'numeric','Value',0.012,'Limits',[0,Inf], ...
+ef_gamma = uieditfield(panel,'numeric','Value',0.006,'Limits',[0,Inf], ...
     'Position',[52,y,70,22]);
 uilabel(panel,'Text','t:','Position',[132,y,16,22]);
 ef_t = uieditfield(panel,'numeric','Value',1.0,'Limits',[0,Inf], ...
@@ -782,7 +782,7 @@ app.ef_delta.Visible  = onoff(isHuber);
 if strcmp(app.dd_problem.Value,'L1')
     app.ef_gamma.Value = 0.006;
 else
-    app.ef_gamma.Value = 0.012;
+    app.ef_gamma.Value = 0.006;
 end
 fig.UserData = app;
 end
@@ -999,7 +999,7 @@ app.iterOffset = 0;
 fig.UserData = app;
 appendLog(fig,'Starting solver...');
 
-config = buildConfig(fig);
+config = buildConfig(fig, app.dd_algorithm.Value);
 config.display_callback = @(x,k) safeLiveUpdate(x,k,fig,config.maxiter);
 
 try
@@ -1045,6 +1045,11 @@ try
     colorshow(app.ax_recon, x_sol);
     title(app.ax_recon, sprintf('Reconstruction — %s (%d iters)', algo, info.iterations));
 
+    if strcmpi(algo, 'CP') && isfield(info, 't_safe')
+        appendLog(fig, sprintf('CP step sizes: t=%.4e  s=%.4e  (1/||A||_2=%.4e)', ...
+                               info.t, info.s, info.t_safe));
+    end
+
     if ~isempty(app.img_original) && ...
             size(app.img_original,1)==size(x_sol,1) && ...
             size(app.img_original,2)==size(x_sol,2)
@@ -1076,18 +1081,24 @@ end
 %  BUILD CONFIG HELPER
 % =============================================================================
 
-function config = buildConfig(fig)
+function config = buildConfig(fig, algo)
 % Read solver parameters from the Deblur panel UI fields into a config struct.
+% For CP, t/rho/s are omitted so CP.m can compute the theory-derived t_safe = 1/||A||_2.
 app = fig.UserData;
+if nargin < 2 || isempty(algo)
+    algo = app.dd_algorithm.Value;
+end
 config.problem = lower(app.dd_problem.Value);
 config.gamma   = app.ef_gamma.Value;
-config.t       = app.ef_t.Value;
-config.rho     = app.ef_rho.Value;
-config.s       = app.ef_s.Value;
 config.maxiter = app.ef_maxiter.Value;
 config.tol     = app.ef_tol.Value;
 config.delta   = app.ef_delta.Value;
 config.verbose = false;
+if ~strcmpi(algo, 'CP')
+    config.t   = app.ef_t.Value;
+    config.rho = app.ef_rho.Value;
+    config.s   = app.ef_s.Value;
+end
 end
 
 
@@ -1149,6 +1160,10 @@ for ai = 1:numel(algos)
 
     try
         cfg = config;
+        if strcmpi(algo, 'CP')
+            if isfield(cfg, 't'), cfg = rmfield(cfg, 't'); end
+            if isfield(cfg, 's'), cfg = rmfield(cfg, 's'); end
+        end
         cfg.display_callback = @(x,k) safeLiveUpdate(x,k,fig,config.maxiter);
 
         if C == 1
@@ -1194,6 +1209,10 @@ for ai = 1:numel(algos)
         fig.UserData = app;
 
         appendLog(fig, sprintf('%s done: %d iters  %.2fs', algo, info.iterations, info.time_sec));
+        if strcmpi(algo, 'CP') && isfield(info, 't_safe')
+            appendLog(fig, sprintf('  CP step sizes: t=%.4e  s=%.4e  (1/||A||_2=%.4e)', ...
+                                   info.t, info.s, info.t_safe));
+        end
 
     catch ME
         appendLog(fig, sprintf('%s FAILED: %s', algo, ME.message));
@@ -1332,27 +1351,45 @@ end
 
 
 function cb_TuneApplyGamma(fig)
-% Push the optimal γ found by golden search into the Deblur tab's gamma field.
+% Push optimal gamma + matching algorithm/problem into the Deblur tab.
 app = fig.UserData;
 if isnan(app.tune_best_gamma)
     uialert(fig,'Run Golden Search first.','Nothing to apply'); return
 end
+% Sync algorithm and problem from Tune tab
+app.dd_algorithm.Value = app.dd_tune_algo.Value;
+app.dd_problem.Value   = app.dd_tune_prob.Value;
+fig.UserData = app;
+cb_AlgorithmChanged(fig);   % updates t, rho, s, maxiter for the algorithm
+cb_ProblemChanged(fig);     % updates gamma default (overridden below)
+% Apply the searched gamma (takes priority over cb_ProblemChanged's default)
+app = fig.UserData;
 app.ef_gamma.Value = app.tune_best_gamma;
 fig.UserData = app;
-appendLog(fig, sprintf('Applied gamma* = %.5f to Deblur tab.', app.tune_best_gamma));
+appendLog(fig, sprintf('Applied: algo=%s  prob=%s  gamma*=%.5f', ...
+    app.dd_tune_algo.Value, app.dd_tune_prob.Value, app.tune_best_gamma));
 cb_SwitchMode(fig, 'deblur');
 end
 
 
 function cb_TuneApplyDelta(fig)
-% Push the optimal delta found by delta golden search into the Deblur tab.
+% Push optimal delta + matching algorithm/problem (Huber) into the Deblur tab.
 app = fig.UserData;
 if isnan(app.tune_best_delta)
     uialert(fig,'Run delta Search first.','Nothing to apply'); return
 end
+% Sync algorithm and force Huber problem
+app.dd_algorithm.Value = app.dd_tune_algo.Value;
+app.dd_problem.Value   = 'Huber';
+fig.UserData = app;
+cb_AlgorithmChanged(fig);   % updates t, rho, s, maxiter
+cb_ProblemChanged(fig);     % sets gamma default for Huber
+% Apply the searched delta
+app = fig.UserData;
 app.ef_delta.Value = app.tune_best_delta;
 fig.UserData = app;
-appendLog(fig, sprintf('Applied delta* = %.5f to Deblur tab.', app.tune_best_delta));
+appendLog(fig, sprintf('Applied: algo=%s  prob=Huber  delta*=%.5f', ...
+    app.dd_tune_algo.Value, app.tune_best_delta));
 cb_SwitchMode(fig, 'deblur');
 end
 
@@ -1386,6 +1423,10 @@ end
 if isempty(app.img_original)
     uialert(fig,'Load a ground-truth image in the Deblur tab first.','No ground truth'); return
 end
+
+addpath(fullfile(app.appDir,'algorithms'));
+addpath(fullfile(app.appDir,'prox_operators'));
+addpath(fullfile(app.appDir,'metrics'));
 
 app.solverRunning              = true;
 app.btn_tune_run_delta.Enable  = 'off';
@@ -1450,8 +1491,11 @@ try
         updateTuneSearchPlot(fig, history, best_delta, metric_name, 'delta');
     end
 
-    best_delta = exp((lo + hi) / 2);
-    [best_val, best_img] = evalTuneDelta(fig, best_delta);
+    final_delta = exp((lo + hi) / 2);
+    [final_val, final_img] = evalTuneDelta(fig, final_delta);
+    if metricBetter(final_val, best_val, metric_name)
+        best_delta = final_delta; best_val = final_val; best_img = final_img;
+    end
     app = fig.UserData;
     app.tune_best_delta     = best_delta;
     app.tune_best_delta_img = best_img;
@@ -1502,7 +1546,7 @@ b    = app.img_deblur_input;
 psf  = app.psf_deblur; if isempty(psf), psf = 1; end
 algo = app.dd_tune_algo.Value;
 
-cfg         = buildConfig(fig);              % reads t, rho, s, maxiter, tol from Deblur tab
+cfg         = buildConfig(fig, algo);        % omits t/s for CP so CP.m computes t_safe
 cfg.problem = lower(app.dd_tune_prob.Value); % use Tune tab's problem selection
 cfg.gamma   = gamma;
 cfg.verbose = false;
@@ -1530,7 +1574,7 @@ b    = app.img_deblur_input;
 psf  = app.psf_deblur; if isempty(psf), psf = 1; end
 algo = app.dd_tune_algo.Value;
 
-cfg         = buildConfig(fig);   % reads gamma, t, rho, s, maxiter, tol
+cfg         = buildConfig(fig, algo);   % omits t/s for CP so CP.m computes t_safe
 cfg.problem = 'huber';
 cfg.delta   = delta_val;
 cfg.verbose = false;

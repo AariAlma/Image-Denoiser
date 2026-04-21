@@ -11,11 +11,10 @@ function x = deblur(problem, algorithm, xinitial, kernel, b, i)
 %   kernel    - (kH x kW) double, PSF (point-spread function)
 %   b         - (H x W) double, blurred+noisy observation in [0,1]
 %   i         - (optional) parameter struct with fields:
-%                 gamma   - TV regularization weight
-%                           default 0.012 for l2, 0.006 for l1
+%                 gamma   - TV regularization weight    (default 0.006)
 %                 t       - primal step size           (default 1.0; PDR: 0.25)
 %                 rho     - over-relaxation / ADMM penalty (default 1.0; PDR: 1.25)
-%                 s       - dual step size for CP      (default 0.25)
+%                 s       - dual step size for CP      (default 1/||A||_2)
 %                 maxiter - iteration cap              (default 500; ADMM: 200)
 %                 tol     - convergence tolerance      (default 1e-4)
 %
@@ -42,20 +41,20 @@ addpath(fullfile(appDir,'prox_operators'));
 if nargin < 6 || isempty(i), i = struct(); end
 
 config.problem = lower(problem);
-if strcmp(config.problem, 'l1')
-    config.gamma = fieldOrDefault(i, 'gamma', 0.006);
-else
-    config.gamma = fieldOrDefault(i, 'gamma', 0.012);
-end
+config.gamma = fieldOrDefault(i, 'gamma', 0.006);
 switch upper(algorithm)
     case 'PDR',  t_def = 0.25; rho_def = 1.25; maxiter_def = 500;
     case 'ADMM', t_def = 1.0;  rho_def = 1.0;  maxiter_def = 200;
-    case 'CP',   t_def = 0.25; rho_def = 1.0;  maxiter_def = 500;
+    case 'CP',   t_def = [];   rho_def = 1.0;  maxiter_def = 500;  % CP.m computes 1/||A||_2
     otherwise,   t_def = 1.0;  rho_def = 1.0;  maxiter_def = 500;
 end
-config.t       = fieldOrDefault(i, 't',       t_def);
+if ~isempty(t_def)
+    config.t = fieldOrDefault(i, 't', t_def);
+elseif isfield(i, 't')
+    config.t = i.t;   % CP: only forward if user explicitly specified
+end
 config.rho     = fieldOrDefault(i, 'rho',     rho_def);
-config.s       = fieldOrDefault(i, 's',       0.25);
+if isfield(i, 's'), config.s = i.s; end   % s: only forward if user specified (CP computes default)
 config.maxiter = fieldOrDefault(i, 'maxiter', maxiter_def);
 config.tol     = fieldOrDefault(i, 'tol',     1e-4);
 config.delta   = fieldOrDefault(i, 'delta',   0.1);

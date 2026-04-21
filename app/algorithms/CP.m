@@ -53,28 +53,30 @@ function [x_sol, info] = CP(b, psf, config)
 %   info  - struct: .objective, .rel_change, .iterations, .converged, .time_sec
 
 % -------------------------------------------------------------------------
-% 1. Read config with defaults
+% 1. Pre-compute OTF — needed to derive safe step sizes before reading config
+% -------------------------------------------------------------------------
+[H, W] = size(b);
+k_hat  = psfToOtf(psf, H, W);          % (H x W) complex OTF
+
+% Safe step size: t = s = 1/||A||_2  (convergence requires t*s*||A||^2 <= 1)
+% A = [K; D_x; D_y], so A^T A = K^T K + D^T D (both diagonalised by FFT under circular BC).
+% Eigenvalues of D^T D at frequency (u,v): 4 - 2cos(2πu/W) - 2cos(2πv/H)
+[uu, vv]  = meshgrid(0:W-1, 0:H-1);
+lap_eigs  = 4 - 2*cos(2*pi*uu/W) - 2*cos(2*pi*vv/H);
+A_norm_sq = max(abs(k_hat(:)).^2 + lap_eigs(:));   % largest eigenvalue of A^T A
+t_safe    = 1 / sqrt(double(A_norm_sq));            % = 1/||A||_2
+
+% -------------------------------------------------------------------------
+% 2. Read config with defaults
 % -------------------------------------------------------------------------
 problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
-if strcmp(problem, 'l1')
-    gamma = fieldOrDefault(config, 'gamma', 0.006);
-else
-    gamma = fieldOrDefault(config, 'gamma', 0.012);
-end
-t       = fieldOrDefault(config, 't',       0.2);    % primal step size (tau)
-s       = fieldOrDefault(config, 's',       0.2);    % dual step size (sigma)
+gamma = fieldOrDefault(config, 'gamma', 0.006);
+t       = fieldOrDefault(config, 't',       t_safe); % primal step size = 1/||A||_2
+s       = fieldOrDefault(config, 's',       t_safe); % dual step size   = 1/||A||_2
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations
 tol     = fieldOrDefault(config, 'tol',     1e-4);   % convergence tolerance
 verbose = fieldOrDefault(config, 'verbose', true);   % print progress?
 delta   = fieldOrDefault(config, 'delta',   0.1);    % Huber transition threshold
-
-% -------------------------------------------------------------------------
-% 2. Pre-compute fixed quantities
-% -------------------------------------------------------------------------
-[H, W] = size(b);
-
-% OTF: Fourier-domain representation of blur operator K
-k_hat = psfToOtf(psf, H, W);   % (H x W) complex
 
 % -------------------------------------------------------------------------
 % 3. Initialize variables
@@ -243,6 +245,9 @@ info.rel_change = rel_history(1:k);
 info.iterations = k;
 info.converged  = converged;
 info.time_sec   = elapsed;
+info.t          = t;        % primal step size actually used (= t_safe if not overridden)
+info.s          = s;        % dual   step size actually used (= t_safe if not overridden)
+info.t_safe     = t_safe;   % theory-derived 1/||A||_2 for reference
 
 end  % <<<< end of CP (main function)
 

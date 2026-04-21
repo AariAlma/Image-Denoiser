@@ -54,11 +54,7 @@ function [x_sol, info] = PDR(b, psf, config)
 % 1. Read config with defaults
 % -------------------------------------------------------------------------
 problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
-if strcmp(problem, 'l1')
-    gamma = fieldOrDefault(config, 'gamma', 0.006);
-else
-    gamma = fieldOrDefault(config, 'gamma', 0.012);
-end
+gamma = fieldOrDefault(config, 'gamma', 0.006);
 t       = fieldOrDefault(config, 't',       0.25);   % step size (enters via prox of g)
 rho     = fieldOrDefault(config, 'rho',     1.25);   % DR relaxation (0 < rho < 2)
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations
