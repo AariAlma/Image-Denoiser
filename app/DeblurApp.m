@@ -1046,6 +1046,8 @@ try
     title(app.ax_recon, sprintf('Reconstruction — %s (%d iters)', algo, info.iterations));
 
     if strcmpi(algo, 'CP') && isfield(info, 't_safe')
+        app.ef_t.Value = info.t;
+        app.ef_s.Value = info.s;
         appendLog(fig, sprintf('CP step sizes: t=%.4e  s=%.4e  (1/||A||_2=%.4e)', ...
                                info.t, info.s, info.t_safe));
     end
@@ -1210,6 +1212,10 @@ for ai = 1:numel(algos)
 
         appendLog(fig, sprintf('%s done: %d iters  %.2fs', algo, info.iterations, info.time_sec));
         if strcmpi(algo, 'CP') && isfield(info, 't_safe')
+            app = fig.UserData;
+            app.ef_t.Value = info.t;
+            app.ef_s.Value = info.s;
+            fig.UserData = app;
             appendLog(fig, sprintf('  CP step sizes: t=%.4e  s=%.4e  (1/||A||_2=%.4e)', ...
                                    info.t, info.s, info.t_safe));
         end
