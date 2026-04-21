@@ -11,11 +11,12 @@ function x = deblur(problem, algorithm, xinitial, kernel, b, i)
 %   kernel    - (kH x kW) double, PSF (point-spread function)
 %   b         - (H x W) double, blurred+noisy observation in [0,1]
 %   i         - (optional) parameter struct with fields:
-%                 gamma   - TV regularization weight  (default 0.006)
-%                 t       - primal step size           (default 1.0)
-%                 rho     - over-relaxation / ADMM penalty (default 1.0)
+%                 gamma   - TV regularization weight
+%                           default 0.012 for l2, 0.006 for l1
+%                 t       - primal step size           (default 1.0; PDR: 0.25)
+%                 rho     - over-relaxation / ADMM penalty (default 1.0; PDR: 1.25)
 %                 s       - dual step size for CP      (default 0.25)
-%                 maxiter - iteration cap              (default 500)
+%                 maxiter - iteration cap              (default 500; ADMM: 200)
 %                 tol     - convergence tolerance      (default 1e-4)
 %
 % OUTPUT:
@@ -41,12 +42,23 @@ addpath(fullfile(appDir,'prox_operators'));
 if nargin < 6 || isempty(i), i = struct(); end
 
 config.problem = lower(problem);
-config.gamma   = fieldOrDefault(i, 'gamma',   0.006);
-config.t       = fieldOrDefault(i, 't',       1.0);
-config.rho     = fieldOrDefault(i, 'rho',     1.0);
+if strcmp(config.problem, 'l1')
+    config.gamma = fieldOrDefault(i, 'gamma', 0.006);
+else
+    config.gamma = fieldOrDefault(i, 'gamma', 0.012);
+end
+switch upper(algorithm)
+    case 'PDR',  t_def = 0.25; rho_def = 1.25; maxiter_def = 500;
+    case 'ADMM', t_def = 1.0;  rho_def = 1.0;  maxiter_def = 200;
+    case 'CP',   t_def = 0.25; rho_def = 1.0;  maxiter_def = 500;
+    otherwise,   t_def = 1.0;  rho_def = 1.0;  maxiter_def = 500;
+end
+config.t       = fieldOrDefault(i, 't',       t_def);
+config.rho     = fieldOrDefault(i, 'rho',     rho_def);
 config.s       = fieldOrDefault(i, 's',       0.25);
-config.maxiter = fieldOrDefault(i, 'maxiter', 500);
+config.maxiter = fieldOrDefault(i, 'maxiter', maxiter_def);
 config.tol     = fieldOrDefault(i, 'tol',     1e-4);
+config.delta   = fieldOrDefault(i, 'delta',   0.1);
 config.verbose = false;   % suppress per-iteration output; summary printed below
 
 % ---- Pass caller's initial guess to the solver ------------------------------

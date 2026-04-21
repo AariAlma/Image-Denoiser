@@ -54,9 +54,13 @@ function [x_sol, info] = PDR(b, psf, config)
 % 1. Read config with defaults
 % -------------------------------------------------------------------------
 problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
-gamma   = fieldOrDefault(config, 'gamma',   0.006);  % TV regularization weight
-t       = fieldOrDefault(config, 't',       1.0);    % step size (enters via prox of g)
-rho     = fieldOrDefault(config, 'rho',     1.0);    % DR relaxation (0 < rho < 2)
+if strcmp(problem, 'l1')
+    gamma = fieldOrDefault(config, 'gamma', 0.006);
+else
+    gamma = fieldOrDefault(config, 'gamma', 0.012);
+end
+t       = fieldOrDefault(config, 't',       0.25);   % step size (enters via prox of g)
+rho     = fieldOrDefault(config, 'rho',     1.25);   % DR relaxation (0 < rho < 2)
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations
 tol     = fieldOrDefault(config, 'tol',     1e-4);   % convergence tolerance
 verbose = fieldOrDefault(config, 'verbose', true);   % print progress?

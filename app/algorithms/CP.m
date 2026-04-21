@@ -56,7 +56,11 @@ function [x_sol, info] = CP(b, psf, config)
 % 1. Read config with defaults
 % -------------------------------------------------------------------------
 problem = fieldOrDefault(config, 'problem', 'l2');   % 'l1', 'l2', or 'huber'
-gamma   = fieldOrDefault(config, 'gamma',   0.006);  % TV regularization weight
+if strcmp(problem, 'l1')
+    gamma = fieldOrDefault(config, 'gamma', 0.006);
+else
+    gamma = fieldOrDefault(config, 'gamma', 0.012);
+end
 t       = fieldOrDefault(config, 't',       0.2);    % primal step size (tau)
 s       = fieldOrDefault(config, 's',       0.2);    % dual step size (sigma)
 maxiter = fieldOrDefault(config, 'maxiter', 500);    % max iterations

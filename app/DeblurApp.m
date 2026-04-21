@@ -132,9 +132,9 @@ W2t = floor((MW-20)/2);
 ax_tune_scatter = uiaxes(mp_tune,'Position',[5,      AY, W2t, AH]);
 ax_tune_img     = uiaxes(mp_tune,'Position',[W2t+15, AY, W2t, AH]);
 title(ax_tune_scatter,'Golden Search — Evaluated Points');
-xlabel(ax_tune_scatter,'\gamma'); ylabel(ax_tune_scatter,'Metric');
+xlabel(ax_tune_scatter,'gamma'); ylabel(ax_tune_scatter,'Metric');
 grid(ax_tune_scatter,'on');
-title(ax_tune_img,'Best Reconstruction (\gamma^*)');
+title(ax_tune_img,'Best Reconstruction (gamma*)');
 ax_tune_img.XTick=[]; ax_tune_img.YTick=[];
 
 % Store handles
@@ -402,7 +402,7 @@ y = y - 30;
 
 % Row 1: gamma, t
 uilabel(panel,'Text','gamma:','Position',[5,y,44,22]);
-ef_gamma = uieditfield(panel,'numeric','Value',0.006,'Limits',[0,Inf], ...
+ef_gamma = uieditfield(panel,'numeric','Value',0.012,'Limits',[0,Inf], ...
     'Position',[52,y,70,22]);
 uilabel(panel,'Text','t:','Position',[132,y,16,22]);
 ef_t = uieditfield(panel,'numeric','Value',1.0,'Limits',[0,Inf], ...
@@ -560,7 +560,7 @@ dd_metric = uidropdown(panel,'Items',{'PSNR','SSIM','MSE','SNR'},'Value','PSNR',
 y = y - 42;
 
 % -- Search bounds -------------------------------------------------------------
-uilabel(panel,'Text','\gamma Search Bounds','Position',[5,y,PW,18],'FontWeight','bold');
+uilabel(panel,'Text','gamma Search Bounds','Position',[5,y,PW,18],'FontWeight','bold');
 y = y - 30;
 uilabel(panel,'Text','min:','Position',[5,y,28,22]);
 ef_gmin = uieditfield(panel,'numeric','Value',1e-4,'Limits',[1e-8,1e4], ...
@@ -575,7 +575,7 @@ ef_tol = uieditfield(panel,'numeric','Value',0.05,'Limits',[1e-6,10], ...
 y = y - 46;
 
 % -- Run button ----------------------------------------------------------------
-btn_run = uibutton(panel,'Text','Run \gamma Search', ...
+btn_run = uibutton(panel,'Text','Run gamma Search', ...
     'Position',[5,y,PW,36], ...
     'BackgroundColor',[0.10,0.60,0.15],'FontColor','white', ...
     'FontWeight','bold','FontSize',12, ...
@@ -583,7 +583,7 @@ btn_run = uibutton(panel,'Text','Run \gamma Search', ...
 y = y - 44;
 
 % -- Apply button --------------------------------------------------------------
-btn_apply = uibutton(panel,'Text','Apply \gamma* \rightarrow Deblur', ...
+btn_apply = uibutton(panel,'Text','Apply gamma* -> Deblur', ...
     'Position',[5,y,PW,36], ...
     'BackgroundColor',[0.15 0.35 0.70],'FontColor','white', ...
     'FontWeight','bold','FontSize',11, ...
@@ -591,7 +591,7 @@ btn_apply = uibutton(panel,'Text','Apply \gamma* \rightarrow Deblur', ...
 y = y - 40;
 
 % -- Save button ---------------------------------------------------------------
-btn_save = uibutton(panel,'Text','Save \gamma* Image...', ...
+btn_save = uibutton(panel,'Text','Save gamma* Image...', ...
     'Position',[5,y,PW,30], ...
     'BackgroundColor',[0.25,0.25,0.25],'FontColor','white', ...
     'ButtonPushedFcn',@(~,~) cb_TuneSaveImg(fig));
@@ -779,6 +779,11 @@ app = fig.UserData;
 isHuber = strcmp(app.dd_problem.Value,'Huber');
 app.lbl_delta.Visible = onoff(isHuber);
 app.ef_delta.Visible  = onoff(isHuber);
+if strcmp(app.dd_problem.Value,'L1')
+    app.ef_gamma.Value = 0.006;
+else
+    app.ef_gamma.Value = 0.012;
+end
 fig.UserData = app;
 end
 
@@ -949,7 +954,13 @@ switch val
         app.ef_t.Value     = 1.0;
         app.ef_rho.Value   = 1.0;
         app.ef_maxiter.Value = 200;
-    otherwise
+    case 'PDR'
+        app.ef_s.Visible   = 'off'; app.lbl_s.Visible   = 'off';
+        app.ef_rho.Visible = 'on';  app.lbl_rho.Visible = 'on';
+        app.ef_t.Value     = 0.25;
+        app.ef_rho.Value   = 1.25;
+        app.ef_maxiter.Value = 500;
+    otherwise  % PDDR
         app.ef_s.Visible   = 'off'; app.lbl_s.Visible   = 'off';
         app.ef_rho.Visible = 'on';  app.lbl_rho.Visible = 'on';
         app.ef_t.Value     = 1.0;
@@ -1305,7 +1316,7 @@ try
     updateTuneSearchPlot(fig, history, best_gamma, metric_name);
     updateTuneBestImg(fig, best_img, best_gamma);
 
-    app.btn_tune_apply.Text = sprintf('Apply \\gamma*=%.4f \\rightarrow Deblur', best_gamma);
+    app.btn_tune_apply.Text = sprintf('Apply gamma*=%.4f -> Deblur', best_gamma);
     appendLog(fig, sprintf('→ Optimal γ* = %.5f   %s = %.4f  (%d evals)', ...
         best_gamma, metric_name, best_val, size(history,1)));
 
